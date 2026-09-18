@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var store: FinanceStore
     @State private var showingAddTransaction = false
+    @State private var editingTransaction: Transaction?
 
     private var sortedTransactions: [Transaction] {
         store.transactions.sorted { $0.date > $1.date }
@@ -32,6 +33,10 @@ struct HomeView: View {
                 List {
                     ForEach(sortedTransactions) { transaction in
                         TransactionRow(transaction: transaction, category: store.category(for: transaction.categoryID))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                editingTransaction = transaction
+                            }
                     }
                     .onDelete { offsets in
                         store.deleteTransactions(at: offsets, from: sortedTransactions)
@@ -39,7 +44,7 @@ struct HomeView: View {
                 }
                 .listStyle(.plain)
             }
-            .navigationTitle("Minhas Finanças")
+            .navigationTitle(store.t("home.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -52,6 +57,9 @@ struct HomeView: View {
             .sheet(isPresented: $showingAddTransaction) {
                 AddTransactionView()
             }
+            .sheet(item: $editingTransaction) { transaction in
+                AddTransactionView(existing: transaction)
+            }
             .task {
                 RecurringEngine.processDueExpenses(store: store)
             }
@@ -60,7 +68,7 @@ struct HomeView: View {
 
     private var balanceCard: some View {
         VStack(spacing: 8) {
-            Text("Saldo do mês")
+            Text(store.t("home.balance"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Text(CurrencyFormatter.string(from: monthlyBalance))
@@ -74,6 +82,7 @@ struct HomeView: View {
 }
 
 private struct TransactionRow: View {
+    @EnvironmentObject private var store: FinanceStore
     let transaction: Transaction
     let category: Category?
 
@@ -83,7 +92,7 @@ private struct TransactionRow: View {
                 .foregroundStyle(Color(hex: category?.colorHex ?? "#999999"))
                 .frame(width: 32)
             VStack(alignment: .leading) {
-                Text(category?.name ?? "Sem categoria")
+                Text(category?.name ?? store.t("home.noCategory"))
                     .font(.body)
                 if let note = transaction.note, !note.isEmpty {
                     Text(note)

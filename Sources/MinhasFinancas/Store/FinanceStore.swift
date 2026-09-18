@@ -8,6 +8,14 @@ final class FinanceStore: ObservableObject {
     @Published var goals: [Goal] = []
     @Published var categoryBudgets: [CategoryBudget] = []
 
+    @Published var language: AppLanguage = .ptBR {
+        didSet {
+            UserDefaults.standard.set(language.rawValue, forKey: Self.languageKey)
+        }
+    }
+
+    private static let languageKey = "app.language"
+
     private let fileManager = FileManager.default
 
     private var appSupportURL: URL {
@@ -28,10 +36,22 @@ final class FinanceStore: ObservableObject {
     }
 
     init() {
+        if let raw = UserDefaults.standard.string(forKey: Self.languageKey),
+           let lang = AppLanguage(rawValue: raw) {
+            language = lang
+        }
         load()
         if categories.isEmpty {
             seedDefaultCategories()
         }
+    }
+
+    func t(_ key: String) -> String {
+        L10n.t(key, language)
+    }
+
+    func setLanguage(_ language: AppLanguage) {
+        self.language = language
     }
 
     func category(for id: UUID?) -> Category? {
@@ -59,6 +79,12 @@ final class FinanceStore: ObservableObject {
         save()
     }
 
+    func updateTransaction(_ transaction: Transaction) {
+        guard let index = transactions.firstIndex(where: { $0.id == transaction.id }) else { return }
+        transactions[index] = transaction
+        save()
+    }
+
     func deleteTransactions(at offsets: IndexSet, from list: [Transaction]) {
         let idsToDelete = Set(offsets.map { list[$0].id })
         transactions.removeAll { idsToDelete.contains($0.id) }
@@ -69,6 +95,12 @@ final class FinanceStore: ObservableObject {
 
     func addRecurringExpense(_ expense: RecurringExpense) {
         recurringExpenses.append(expense)
+        save()
+    }
+
+    func updateRecurringExpense(_ expense: RecurringExpense) {
+        guard let index = recurringExpenses.firstIndex(where: { $0.id == expense.id }) else { return }
+        recurringExpenses[index] = expense
         save()
     }
 
@@ -95,6 +127,12 @@ final class FinanceStore: ObservableObject {
 
     func addGoal(_ goal: Goal) {
         goals.append(goal)
+        save()
+    }
+
+    func updateGoal(_ goal: Goal) {
+        guard let index = goals.firstIndex(where: { $0.id == goal.id }) else { return }
+        goals[index] = goal
         save()
     }
 

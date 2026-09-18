@@ -15,7 +15,7 @@ struct CategoriesView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Gastos") {
+                Section(store.t("categories.expenses")) {
                     ForEach(expenseCategories) { category in
                         CategoryRow(category: category)
                     }
@@ -23,7 +23,7 @@ struct CategoriesView: View {
                         store.deleteCategories(at: offsets, from: expenseCategories)
                     }
                 }
-                Section("Entradas") {
+                Section(store.t("categories.income")) {
                     ForEach(incomeCategories) { category in
                         CategoryRow(category: category)
                     }
@@ -32,7 +32,7 @@ struct CategoriesView: View {
                     }
                 }
             }
-            .navigationTitle("Categorias")
+            .navigationTitle(store.t("categories.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -87,15 +87,15 @@ struct AddCategoryView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Nome", text: $name)
+                TextField(store.t("category.name"), text: $name)
 
-                Picker("Tipo", selection: $kind) {
-                    Text("Gasto").tag(TransactionKind.expense)
-                    Text("Entrada").tag(TransactionKind.income)
+                Picker(store.t("transaction.type"), selection: $kind) {
+                    Text(store.t("transaction.expense")).tag(TransactionKind.expense)
+                    Text(store.t("transaction.income")).tag(TransactionKind.income)
                 }
                 .pickerStyle(.segmented)
 
-                Section("Ícone") {
+                Section(store.t("category.icon")) {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(icons, id: \.self) { icon in
                             Image(systemName: icon)
@@ -108,7 +108,7 @@ struct AddCategoryView: View {
                     }
                 }
 
-                Section("Cor") {
+                Section(store.t("category.color")) {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(colors, id: \.self) { hex in
                             Circle()
@@ -122,13 +122,13 @@ struct AddCategoryView: View {
                     }
                 }
             }
-            .navigationTitle("Nova Categoria")
+            .navigationTitle(store.t("category.newTitle"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button(store.t("common.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Salvar") { save() }
+                    Button(store.t("common.save")) { save() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }

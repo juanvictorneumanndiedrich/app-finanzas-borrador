@@ -39,7 +39,7 @@ struct SummaryView: View {
         NavigationStack {
             List {
                 if !spendingByCategory.isEmpty {
-                    Section("Gastos por categoria") {
+                    Section(store.t("summary.spendingByCategory")) {
                         Chart(spendingByCategory) { item in
                             SectorMark(
                                 angle: .value("Total", NSDecimalNumber(decimal: item.total).doubleValue),
@@ -51,23 +51,23 @@ struct SummaryView: View {
                     }
                 }
 
-                Section("Orçamentos") {
+                Section(store.t("summary.budgets")) {
                     ForEach(store.categories.filter { $0.kind == .expense }) { category in
                         budgetRow(for: category)
                     }
                 }
             }
-            .navigationTitle("Resumo")
-            .alert("Definir orçamento", isPresented: Binding(
+            .navigationTitle(store.t("summary.title"))
+            .alert(store.t("summary.setBudgetTitle"), isPresented: Binding(
                 get: { editingCategoryID != nil },
                 set: { isPresented in
                     if !isPresented { editingCategoryID = nil }
                 }
             )) {
-                TextField("Valor mensal", text: $newLimitText)
+                TextField(store.t("summary.monthlyAmount"), text: $newLimitText)
                     .keyboardType(.decimalPad)
-                Button("Cancelar", role: .cancel) { editingCategoryID = nil }
-                Button("Salvar") { saveBudget() }
+                Button(store.t("common.cancel"), role: .cancel) { editingCategoryID = nil }
+                Button(store.t("common.save")) { saveBudget() }
             }
         }
     }
@@ -102,6 +102,7 @@ struct SummaryView: View {
 }
 
 private struct BudgetRow: View {
+    @EnvironmentObject private var store: FinanceStore
     let category: Category
     let spent: Decimal
     let budget: CategoryBudget?
@@ -139,11 +140,11 @@ private struct BudgetRow: View {
                 Text(CurrencyFormatter.string(from: spent))
                     .font(.caption)
                 if limit > 0 {
-                    Text("de \(CurrencyFormatter.string(from: limit))")
+                    Text(String(format: store.t("summary.ofFormat"), CurrencyFormatter.string(from: limit)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("sem orçamento definido")
+                    Text(store.t("summary.noBudget"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

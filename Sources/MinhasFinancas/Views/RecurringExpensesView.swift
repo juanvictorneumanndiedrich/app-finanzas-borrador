@@ -3,18 +3,19 @@ import SwiftUI
 struct RecurringExpensesView: View {
     @EnvironmentObject private var store: FinanceStore
     @State private var showingAddExpense = false
+    @State private var editingExpense: RecurringExpense?
 
     var body: some View {
         NavigationStack {
             List {
                 ForEach(store.recurringExpenses) { expense in
-                    RecurringRow(expense: expense)
+                    RecurringRow(expense: expense, onTap: { editingExpense = expense })
                 }
                 .onDelete { offsets in
                     store.deleteRecurringExpenses(at: offsets, from: store.recurringExpenses)
                 }
             }
-            .navigationTitle("Gastos Fixos")
+            .navigationTitle(store.t("recurring.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -27,6 +28,9 @@ struct RecurringExpensesView: View {
             .sheet(isPresented: $showingAddExpense) {
                 AddRecurringExpenseView()
             }
+            .sheet(item: $editingExpense) { expense in
+                AddRecurringExpenseView(existing: expense)
+            }
         }
     }
 }
@@ -34,16 +38,19 @@ struct RecurringExpensesView: View {
 private struct RecurringRow: View {
     @EnvironmentObject private var store: FinanceStore
     let expense: RecurringExpense
+    let onTap: () -> Void
 
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
                 Text(expense.name)
                     .font(.body)
-                Text("Todo dia \(expense.dueDay) · \(CurrencyFormatter.string(from: expense.amount))")
+                Text(String(format: store.t("recurring.rowFormat"), expense.dueDay, CurrencyFormatter.string(from: expense.amount)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { onTap() }
             Spacer()
             Toggle("", isOn: Binding(
                 get: { !expense.isPaused },
@@ -58,33 +65,43 @@ struct AddRecurringExpenseView: View {
     @EnvironmentObject private var store: FinanceStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var name: String = ""
-    @State private var amountText: String = ""
-    @State private var dueDay: Int = 1
+    let existing: RecurringExpense?
+
+    @State private var name: String
+    @State private var amountText: String
+    @State private var dueDay: Int
     @State private var selectedCategoryID: UUID?
+
+    init(existing: RecurringExpense? = nil) {
+        self.existing = existing
+        _name = State(initialValue: existing?.name ?? "")
+        _amountText = State(initialValue: existing.map { NSDecimalNumber(decimal: $0.amount).stringValue } ?? "")
+        _dueDay = State(initialValue: existing?.dueDay ?? 1)
+        _selectedCategoryID = State(initialValue: existing?.categoryID)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Nome", text: $name)
-                TextField("Valor", text: $amountText)
+                TextField(store.t("recurring.name"), text: $name)
+                TextField(store.t("recurring.amount"), text: $amountText)
                     .keyboardType(.decimalPad)
-                Stepper("Dia do vencimento: \(dueDay)", value: $dueDay, in: 1...28)
+                Stepper(String(format: store.t("recurring.dueDayFormat"), dueDay), value: $dueDay, in: 1...28)
 
-                Picker("Categoria", selection: $selectedCategoryID) {
-                    Text("Nenhuma").tag(UUID?.none)
+                Picker(store.t("transaction.category"), selection: $selectedCategoryID) {
+                    Text(store.t("transaction.categoryNone")).tag(UUID?.none)
                     ForEach(store.categories.filter { $0.kind == .expense }) { category in
                         Text(category.name).tag(Optional(category.id))
                     }
                 }
             }
-            .navigationTitle("Novo Gasto Fixo")
+            .navigationTitle(existing == nil ? store.t("recurring.newTitle") : store.t("recurring.editTitle"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button(store.t("common.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Salvar") { save() }
+                    Button(store.t("common.save")) { save() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || Decimal(string: amountText) == nil)
                 }
             }
@@ -93,8 +110,17 @@ struct AddRecurringExpenseView: View {
 
     private func save() {
         guard let amount = Decimal(string: amountText) else { return }
-        let expense = RecurringExpense(name: name, amount: amount, dueDay: dueDay, categoryID: selectedCategoryID)
-        store.addRecurringExpense(expense)
+        if let existing {
+            var updated = existing
+            updated.name = name
+            updated.amount = amount
+            updated.dueDay = dueDay
+            updated.categoryID = selectedCategoryID
+            store.updateRecurringExpense(updated)
+        } else {
+            let expense = RecurringExpense(name: name, amount: amount, dueDay: dueDay, categoryID: selectedCategoryID)
+            store.addRecurringExpense(expense)
+        }
         dismiss()
     }
 }
